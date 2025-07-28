@@ -1,7 +1,7 @@
 // src/api/apiService.js
 
-// Access the API base URL from environment variables
-const API_BASE_URL = "http://localhost:9728";
+// API Configuration using environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:9728";
 
 // --- General Utility ---
 // const handleResponse = async (response) => {
