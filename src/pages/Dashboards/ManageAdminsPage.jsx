@@ -2,37 +2,71 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../App';
 import { getAllAdmins, deleteAdmin } from '../../api/apiService';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import {
+    Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle // Added Dialog components
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 function ManageAdminsPage() {
-    const { user /* Removed handleLogout */ } = useContext(AuthContext); // Removed handleLogout
+    const { user } = useContext(AuthContext);
     const [message, setMessage] = useState('');
     const [admins, setAdmins] = useState([]);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
+    // State for delete confirmation dialog
+    const [openConfirmDeleteDialog, setOpenConfirmDeleteDialog] = useState(false);
+    const [adminToDeleteId, setAdminToDeleteId] = useState(null);
+
     const fetchAdmins = async () => {
+        setLoading(true);
         try {
             setMessage('');
             const data = await getAllAdmins();
             setAdmins(data);
         } catch (error) {
             setMessage(`Error fetching admins: ${error.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleDeleteAdmin = async (id) => {
-        if (window.confirm("Are you sure you want to delete this admin?")) {
-            try {
-                setMessage('');
-                await deleteAdmin(id);
-                setMessage('Admin deleted successfully.');
-                fetchAdmins();
-            } catch (error) {
-                setMessage(`Error deleting admin: ${error.message}`);
-            }
+    // Handler to open the confirmation dialog
+    const handleOpenConfirmDeleteDialog = (id) => {
+        setAdminToDeleteId(id);
+        setOpenConfirmDeleteDialog(true);
+    };
+
+    // Handler to close the confirmation dialog
+    const handleCloseConfirmDeleteDialog = () => {
+        setOpenConfirmDeleteDialog(false);
+        setAdminToDeleteId(null);
+    };
+
+    // Handler to execute the delete operation after confirmation
+    const handleExecuteDeleteAdmin = async () => {
+        if (adminToDeleteId === null) return;
+
+        try {
+            setMessage('');
+            await deleteAdmin(adminToDeleteId);
+            setMessage('Admin deleted successfully.');
+            fetchAdmins(); // Refresh the list
+            handleCloseConfirmDeleteDialog();
+        } catch (error) {
+            setMessage(`Error deleting admin: ${error.message}`);
+            handleCloseConfirmDeleteDialog();
         }
     };
+
+    // --- NEW: Handle Edit Admin ---
+    const handleEditAdmin = (adminUsername) => {
+        // Navigate to the EditProfilePage for the specific admin
+        navigate(`/profile/admin/${adminUsername}/edit`);
+    };
+    // --- END NEW ---
 
     useEffect(() => {
         if (user && user.type === 'admin') {
@@ -57,7 +91,6 @@ function ManageAdminsPage() {
                 <Button variant="outlined" onClick={() => navigate('/admin/dashboard')}>
                     Back to Admin Panel
                 </Button>
-                {/* Removed Logout Button */}
             </Box>
             {message && (
                 <Typography
@@ -78,35 +111,95 @@ function ManageAdminsPage() {
                         Add New Admin
                     </Button>
                 </Box>
-                <TableContainer component={Paper} sx={{ boxShadow: 2, borderRadius: 1 }}>
-                    <Table sx={{ minWidth: 650 }} aria-label="admin management table">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={tableCellHeaderSx}>ID</TableCell>
-                                <TableCell sx={tableCellHeaderSx}>Username</TableCell>
-                                <TableCell sx={tableCellHeaderSx}>First Name</TableCell>
-                                <TableCell sx={tableCellHeaderSx}>Last Name</TableCell>
-                                <TableCell sx={tableCellHeaderSx}>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {admins.map((admin) => (
-                                <TableRow key={admin.adm_id} hover>
-                                    <TableCell sx={tableCellSx}>{admin.adm_id}</TableCell>
-                                    <TableCell sx={tableCellSx}>{admin.admUsername}</TableCell>
-                                    <TableCell sx={tableCellSx}>{admin.adm_firstName}</TableCell>
-                                    <TableCell sx={tableCellSx}>{admin.adm_lastName}</TableCell>
-                                    <TableCell sx={tableCellSx}>
-                                        <Button variant="contained" color="error" size="small" onClick={() => handleDeleteAdmin(admin.adm_id)} sx={actionButtonSx}>
-                                            Delete
-                                        </Button>
-                                    </TableCell>
+                <LoadingSpinner isLoading={loading} message="Loading admins data...">
+                    <TableContainer component={Paper} sx={{ boxShadow: 2, borderRadius: 1 }}>
+                        <Table sx={{ minWidth: 650 }} aria-label="admin management table">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={tableCellHeaderSx}>ID</TableCell>
+                                    <TableCell sx={tableCellHeaderSx}>Username</TableCell>
+                                    <TableCell sx={tableCellHeaderSx}>First Name</TableCell>
+                                    <TableCell sx={tableCellHeaderSx}>Last Name</TableCell>
+                                    <TableCell sx={tableCellHeaderSx}>Actions</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {admins.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                            <Typography variant="body1" color="text.secondary">
+                                                No admins found.
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    admins.map((admin) => (
+                                        <TableRow key={admin.adm_id} hover>
+                                            <TableCell sx={tableCellSx}>{admin.adm_id}</TableCell>
+                                            <TableCell sx={tableCellSx}>{admin.admUsername}</TableCell>
+                                            <TableCell sx={tableCellSx}>{admin.adm_firstName}</TableCell> {/* Assuming adm_firstName is available */}
+                                            <TableCell sx={tableCellSx}>{admin.adm_lastName}</TableCell> {/* Assuming adm_lastName is available */}
+                                            <TableCell sx={tableCellSx}>
+                                                {/* --- NEW: EDIT BUTTON --- */}
+                                                <Button
+                                                    variant="outlined"
+                                                    color="info"
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditAdmin(admin.admUsername);
+                                                    }}
+                                                    sx={actionButtonSx}
+                                                >
+                                                    Edit
+                                                </Button>
+                                                {/* --- END NEW --- */}
+                                                <Button
+                                                    variant="contained"
+                                                    color="error"
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenConfirmDeleteDialog(admin.adm_id);
+                                                    }}
+                                                    sx={actionButtonSx}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </LoadingSpinner>
             </Paper>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={openConfirmDeleteDialog}
+                onClose={handleCloseConfirmDeleteDialog}
+                aria-labelledby="alert-dialog-title"
+                aria-describedby="alert-dialog-description"
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle id="alert-dialog-title">{"Confirm Deletion"}</DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="alert-dialog-description">
+                        Are you sure you want to delete this admin (ID: {adminToDeleteId})? This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseConfirmDeleteDialog} color="primary" variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleExecuteDeleteAdmin} color="error" variant="contained" autoFocus>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

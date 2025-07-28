@@ -4,14 +4,85 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     getAdminProfileByUsername, getCitizenProfileByUsername, getPoliticianProfileByUsername,
     updateAdminProfile, updateCitizenProfile, updatePoliticianProfile
-} from '../../api/apiService'; // Import new update functions
-import { Box, Typography, TextField, Button, Paper, CircularProgress, Alert, Grid, InputLabel, Input } from '@mui/material';
+} from '../../api/apiService';
+import {
+    Box, Typography, TextField, Button, Paper, CircularProgress, Alert, Grid, InputLabel, Input
+} from '@mui/material';
 import { AuthContext } from '../../App';
+import { styled } from '@mui/material/styles';
+import EditIcon from '@mui/icons-material/Edit';
+
+// Styled Components
+const StyledPaper = styled(Paper)(({ theme }) => ({
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    borderRadius: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.3)',
+    backdropFilter: 'blur(10px)',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
+    position: 'relative',
+    overflow: 'hidden',
+    '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '4px',
+        background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '20px 20px 0 0'
+    }
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+    '& .MuiOutlinedInput-root': {
+        borderRadius: '12px',
+        background: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        transition: 'all 0.3s ease',
+        '&:hover': {
+            background: 'rgba(255, 255, 255, 0.9)',
+            transform: 'translateY(-2px)',
+            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.1)'
+        },
+        '&.Mui-focused': {
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderColor: 'primary.main',
+            boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)'
+        }
+    }
+}));
+
+const StyledButton = styled(Button)(({ theme, variant }) => ({
+    borderRadius: '12px',
+    fontWeight: 600,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)'
+    },
+    ...(variant === 'contained' && {
+        background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+        boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+        '&:hover': {
+            background: 'linear-gradient(45deg, #5a6fd8 30%, #6a4190 90%)'
+        }
+    }),
+    ...(variant === 'outlined' && {
+        borderColor: 'primary.main',
+        color: 'primary.main',
+        '&:hover': {
+            borderColor: 'primary.dark',
+            backgroundColor: 'primary.light',
+            color: 'primary.dark'
+        }
+    })
+}));
 
 function EditProfilePage() {
     const { userType, idOrUsername } = useParams();
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useContext(AuthContext); // Access logged-in user info
+    const { user, isAuthenticated } = useContext(AuthContext);
     const [formData, setFormData] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -43,7 +114,6 @@ function EditProfilePage() {
         };
 
         if (userType && idOrUsername && isAuthenticated && user) {
-            // Ensure logged-in user matches the profile being edited OR is an Admin
             if ((user.type === userType && user.username === idOrUsername) || user.type === 'admin') {
                 fetchProfileData();
             } else {
@@ -66,8 +136,6 @@ function EditProfilePage() {
         setError(null);
         setLoading(true);
         try {
-            let updatedProfile = null;
-            // Assuming IDs are available in formData after fetching
             const profileId = formData.adm_id || formData.cti_id || formData.pol_id;
 
             if (!profileId) {
@@ -75,22 +143,15 @@ function EditProfilePage() {
             }
 
             if (userType === 'admin') {
-                updatedProfile = await updateAdminProfile(profileId, formData);
+                await updateAdminProfile(profileId, formData);
             } else if (userType === 'citizen') {
-                updatedProfile = await updateCitizenProfile(profileId, formData);
+                await updateCitizenProfile(profileId, formData);
             } else if (userType === 'politician') {
-                updatedProfile = await updatePoliticianProfile(profileId, formData);
+                await updatePoliticianProfile(profileId, formData);
             }
 
             setMessage(`Profile updated successfully!`);
-            // Optionally, update the user context if it's their own profile
-            if (user.type === userType && user.username === idOrUsername) {
-                // If the updated DTO contains the username and other info, update context
-                user.username = formData.admUsername || formData.ctiUsername || formData.polUsername;
-                user.pol_id = formData.pol_id; // For politician
-                // You might need to refetch the user context or pass more details from backend
-            }
-            navigate(`/profile/${userType}/${idOrUsername}`); // Go back to profile view
+            navigate(`/profile/${userType}/${idOrUsername}`);
         } catch (err) {
             console.error("Failed to update profile:", err);
             setError(`Failed to update profile: ${err.message}`);
@@ -101,29 +162,51 @@ function EditProfilePage() {
 
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Loading profile data...</Typography>
+            <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: '50vh',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                minHeight: '100vh'
+            }}>
+                <Box sx={{ textAlign: 'center' }}>
+                    <CircularProgress size={60} sx={{ color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary">
+                        Loading profile data...
+                    </Typography>
+                </Box>
             </Box>
         );
     }
 
     if (error) {
         return (
-            <Alert severity="error" sx={{ mt: 3, mx: 'auto', maxWidth: 600 }}>
-                {error}
-                <Button onClick={() => navigate(-1)} sx={{ ml: 2 }}>Go Back</Button>
-            </Alert>
+            <Box sx={{ 
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                py: 4,
+                px: { xs: 2, md: 4 },
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                <Alert severity="error" sx={{ maxWidth: 600, width: '100%' }}>
+                    {error}
+                    <StyledButton onClick={() => navigate(-1)} sx={{ ml: 2 }}>
+                        Go Back
+                    </StyledButton>
+                </Alert>
+            </Box>
         );
     }
 
-    // Determine fields to display based on userType
     const getFormFields = () => {
         let fields = [];
         if (userType === 'admin') {
             fields = [
                 { name: 'admUsername', label: 'Username', type: 'text', required: true },
-                { name: 'admPassword', label: 'Password', type: 'password', required: false }, // Handle password change separately/carefully
+                { name: 'admPassword', label: 'New Password (leave blank to keep current)', type: 'password', required: false },
                 { name: 'adm_firstName', label: 'First Name', type: 'text', required: true },
                 { name: 'adm_lastName', label: 'Last Name', type: 'text', required: true },
                 { name: 'adm_email', label: 'Email', type: 'email', required: true },
@@ -133,7 +216,7 @@ function EditProfilePage() {
         } else if (userType === 'citizen') {
             fields = [
                 { name: 'ctiUsername', label: 'Username', type: 'text', required: true },
-                { name: 'ctiPassword', label: 'Password', type: 'password', required: false },
+                { name: 'ctiPassword', label: 'New Password (leave blank to keep current)', type: 'password', required: false },
                 { name: 'cti_firstName', label: 'First Name', type: 'text', required: true },
                 { name: 'cti_lastName', label: 'Last Name', type: 'text', required: true },
                 { name: 'cti_email', label: 'Email', type: 'email', required: true },
@@ -144,7 +227,7 @@ function EditProfilePage() {
         } else if (userType === 'politician') {
             fields = [
                 { name: 'polUsername', label: 'Username', type: 'text', required: true },
-                { name: 'polPassword', label: 'Password', type: 'password', required: false },
+                { name: 'polPassword', label: 'New Password (leave blank to keep current)', type: 'password', required: false },
                 { name: 'pol_firstName', label: 'First Name', type: 'text', required: true },
                 { name: 'pol_lastName', label: 'Last Name', type: 'text', required: true },
                 { name: 'pol_email', label: 'Email', type: 'email', required: true },
@@ -153,74 +236,131 @@ function EditProfilePage() {
                 { name: 'polConstituency', label: 'Constituency', type: 'text', required: true },
             ];
         }
-        // Filter out password field if not specifically for password change form
-        return fields.filter(field => field.name.includes('Password') ? false : true); // Exclude password field for simplicity unless a dedicated change password form
+        return fields;
     };
 
     const formFields = getFormFields();
 
     return (
-        <Paper elevation={6} sx={{ maxWidth: 700, mx: 'auto', p: 4, borderRadius: 3, my: 4 }}>
-            <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 4 }}>
-                Edit {userType.charAt(0).toUpperCase() + userType.slice(1)} Profile
-            </Typography>
-
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
-                <Grid container spacing={2}>
-                    {formFields.map((field) => (
-                        <Grid item xs={12} sm={6} key={field.name}>
-                            <TextField
-                                label={field.label}
-                                variant="outlined"
-                                fullWidth
-                                name={field.name}
-                                type={field.type}
-                                value={formData[field.name] || ''}
-                                onChange={handleChange}
-                                required={field.required}
-                                InputLabelProps={field.type === 'date' ? { shrink: true } : {}}
-                            />
-                        </Grid>
-                    ))}
-                </Grid>
-                <Box display="flex" justifyContent="center" mt={4} gap={2}>
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        color="primary"
-                        sx={{ py: 1.5, px: 3, fontSize: '1.1rem' }}
+        <Box sx={{ 
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+            py: 4,
+            px: { xs: 2, md: 4 }
+        }}>
+            <StyledPaper elevation={8} sx={{ maxWidth: 700, mx: 'auto', p: { xs: 3, md: 5 }, my: 4 }}>
+                <Box sx={{ textAlign: 'center', mb: 4 }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center',
+                        mb: 3
+                    }}>
+                        <Box sx={{
+                            background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                            borderRadius: '50%',
+                            p: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 8px 25px rgba(102, 126, 234, 0.3)'
+                        }}>
+                            <EditIcon sx={{ fontSize: 40, color: 'white' }} />
+                        </Box>
+                    </Box>
+                    <Typography 
+                        variant="h3" 
+                        component="h1" 
+                        gutterBottom 
+                        sx={{ 
+                            fontWeight: 800,
+                            background: 'linear-gradient(45deg, #667eea 30%, #764ba2 90%)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            mb: 2,
+                            letterSpacing: '1px'
+                        }}
                     >
-                        Save Changes
-                    </Button>
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => navigate(`/profile/${userType}/${idOrUsername}`)}
-                        sx={{ py: 1.5, px: 3, fontSize: '1.1rem' }}
+                        Edit {userType.charAt(0).toUpperCase() + userType.slice(1)} Profile
+                    </Typography>
+                    <Typography 
+                        variant="h6" 
+                        color="text.secondary" 
+                        sx={{ 
+                            fontWeight: 500,
+                            opacity: 0.8
+                        }}
                     >
-                        Cancel
-                    </Button>
+                        Update your profile information
+                    </Typography>
                 </Box>
-            </Box>
-            {message && (
-                <Typography
-                    variant="body1"
-                    align="center"
-                    sx={{ mt: 3, p: 2, borderRadius: 1, color: 'success.main', bgcolor: 'success.light', border: 1, borderColor: 'success.main' }}
-                >
-                    {message}
-                </Typography>
-            )}
-            {error && (
-                <Typography
-                    variant="body1"
-                    align="center"
-                    sx={{ mt: 3, p: 2, borderRadius: 1, color: 'error.main', bgcolor: 'error.light', border: 1, borderColor: 'error.main' }}
-                >
-                    {error}
-                </Typography>
-            )}
-        </Paper>
+
+                <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
+                    <Grid container spacing={3}>
+                        {formFields.map((field) => (
+                            <Grid item xs={12} sm={6} key={field.name}>
+                                <StyledTextField
+                                    label={field.label}
+                                    variant="outlined"
+                                    fullWidth
+                                    name={field.name}
+                                    type={field.type}
+                                    value={formData[field.name] || (field.type === 'date' && formData[field.name] ? formData[field.name].split('T')[0] : '')}
+                                    onChange={handleChange}
+                                    required={field.required}
+                                    InputLabelProps={field.type === 'date' ? { shrink: true } : {}}
+                                    disabled={field.name.includes('Username') && userType !== 'admin'}
+                                />
+                            </Grid>
+                        ))}
+                    </Grid>
+                    <Box display="flex" justifyContent="center" mt={5} gap={3}>
+                        <StyledButton
+                            type="submit"
+                            variant="contained"
+                            sx={{ py: 1.5, px: 4, fontSize: '1.1rem' }}
+                        >
+                            Save Changes
+                        </StyledButton>
+                        <StyledButton
+                            variant="outlined"
+                            onClick={() => navigate(`/profile/${userType}/${idOrUsername}`)}
+                            sx={{ py: 1.5, px: 4, fontSize: '1.1rem' }}
+                        >
+                            Cancel
+                        </StyledButton>
+                    </Box>
+                </Box>
+
+                {message && (
+                    <Box sx={{ 
+                        mt: 3, 
+                        p: 3, 
+                        borderRadius: 2, 
+                        background: 'linear-gradient(45deg, #4caf50 30%, #45a049 90%)', 
+                        color: 'white' 
+                    }}>
+                        <Typography variant="body1" align="center" sx={{ fontWeight: 600 }}>
+                            {message}
+                        </Typography>
+                    </Box>
+                )}
+                {error && (
+                    <Box sx={{ 
+                        mt: 3, 
+                        p: 3, 
+                        borderRadius: 2, 
+                        background: 'linear-gradient(45deg, #f44336 30%, #d32f2f 90%)', 
+                        color: 'white' 
+                    }}>
+                        <Typography variant="body1" align="center" sx={{ fontWeight: 600 }}>
+                            {error}
+                        </Typography>
+                    </Box>
+                )}
+            </StyledPaper>
+        </Box>
     );
 }
 
